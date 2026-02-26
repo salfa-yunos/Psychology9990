@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Cambridge 9990 Psychology Revision Game</title>
+<style>
+body {font-family: Arial; background:#111; color:white; text-align:center;}
+button {padding:10px 15px; margin:5px; cursor:pointer;}
+.card {background:#222; padding:20px; margin:20px auto; width:80%; border-radius:10px;}
+#answers button {display:block; margin:10px auto;}
+textarea {color:black;}
+</style>
+</head>
+<body>
+
+<h1>Cambridge 9990 Psychology Game</h1>
+
+<div id="menu" class="card">
+<h2>Select Mode</h2>
+<button onclick="setMode('AS')">AS Level</button>
+<button onclick="setMode('A2')">A2 Level</button>
+<button onclick="startBossBattle()">Boss Battle</button>
+</div>
+
+<div id="game" class="card" style="display:none;">
+<div>
+Lives: <span id="lives"></span> |
+XP: <span id="xp">0</span> |
+Level: <span id="level">1</span> |
+Time: <span id="timer">0</span>s
+</div>
+
+<h3 id="topicTitle"></h3>
+<div id="question"></div>
+<div id="answers"></div>
+<textarea id="essayBox" style="display:none;width:80%;height:120px;"></textarea>
+<br>
+<button id="submitEssay" style="display:none;" onclick="submitEssay()">Submit Essay</button>
+</div>
+
+<div id="results" class="card" style="display:none;"></div>
+
+<script>
+
+let questionBank = [
+{mode:"AS",topic:"Biological",difficulty:"core",type:"mcq",marks:1,time:45,
+question:"Which part of the neuron receives impulses?",
+options:["Axon","Dendrite","Myelin","Synapse"],answer:1},
+{mode:"AS",topic:"Biological",difficulty:"examiner",type:"essay",marks:12,time:900,
+question:"Discuss the nature vs nurture debate using biological evidence."}
+];
+
+let currentMode = "";
+let currentTopic = "";
+let difficulty = "";
+let lives = 4;
+let xp = 0;
+let level = 1;
+let score = 0;
+let questions = [];
+let currentQuestionIndex = 0;
+let timerInterval;
+let analytics = {total:0,correct:0};
+
+function playTone(freq){
+let ctx = new (window.AudioContext || window.webkitAudioContext)();
+let osc = ctx.createOscillator();
+osc.type="sine";
+osc.frequency.value=freq;
+osc.connect(ctx.destination);
+osc.start();
+setTimeout(()=>osc.stop(),200);
+}
+
+function soundCorrect(){playTone(600);}
+function soundWrong(){playTone(200);}
+function soundLevelUp(){playTone(800);}
+function soundGameOver(){playTone(100);}
+
+function setMode(mode){
+currentMode = mode;
+difficulty = prompt("Choose difficulty: core / advanced / examiner");
+currentTopic = prompt("Enter topic name (e.g., Biological)");
+startGame();
+}
+
+function startGame(){
+document.getElementById("menu").style.display="none";
+document.getElementById("game").style.display="block";
+document.getElementById("topicTitle").innerText=currentTopic;
+
+questions = questionBank.filter(q=>q.mode===currentMode && q.topic===currentTopic);
+updateLives();
+loadQuestion();
+}
+
+function updateLives(){
+document.getElementById("lives").innerHTML="❤️".repeat(lives);
+}
+
+function loadQuestion(){
+if(currentQuestionIndex>=questions.length){endGame(); return;}
+let q=questions[currentQuestionIndex];
+document.getElementById("question").innerText=q.question;
+document.getElementById("answers").innerHTML="";
+document.getElementById("essayBox").style.display="none";
+document.getElementById("submitEssay").style.display="none";
+
+startTimer(q.time);
+
+if(q.type==="mcq"){
+q.options.forEach((opt,i)=>{
+let btn=document.createElement("button");
+btn.innerText=opt;
+btn.onclick=()=>checkAnswer(i===q.answer,q.marks);
+document.getElementById("answers").appendChild(btn);
+});
+}
+else{
+document.getElementById("essayBox").style.display="block";
+document.getElementById("submitEssay").style.display="inline-block";
+}
+}
+
+function checkAnswer(correct,marks){
+clearInterval(timerInterval);
+analytics.total++;
+if(correct){
+score+=marks;
+xp+=marks*10;
+analytics.correct++;
+soundCorrect();
+}
+else{
+lives--;
+xp-=20;
+soundWrong();
+if(lives<=0){soundGameOver();endGame();return;}
+}
+updateLives();
+checkLevel();
+currentQuestionIndex++;
+loadQuestion();
+}
+
+function submitEssay(){
+clearInterval(timerInterval);
+let text=document.getElementById("essayBox").value;
+let q=questions[currentQuestionIndex];
+let result=markEssay(text,q.marks);
+alert("Essay Score: "+result+"/"+q.marks);
+checkAnswer(result>=q.marks/2,q.marks);
+}
+
+function markEssay(text,marks){
+let score=0;
+if(text.length>200) score+=marks/2;
+if(text.includes("however")) score+=marks/2;
+return Math.round(score);
+}
+
+function startTimer(seconds){
+let time=seconds;
+document.getElementById("timer").innerText=time;
+timerInterval=setInterval(()=>{
+time--;
+document.getElementById("timer").innerText=time;
+if(time<=0){
+clearInterval(timerInterval);
+lives--;
+updateLives();
+if(lives<=0){endGame();}
+else{
+currentQuestionIndex++;
+loadQuestion();
+}
+}
+},1000);
+}
+
+function checkLevel(){
+if(xp>=500) level=3;
+else if(xp>=200) level=2;
+else level=1;
+document.getElementById("xp").innerText=xp;
+document.getElementById("level").innerText=level;
+}
+
+function predictGrade(){
+let percent=(analytics.correct/analytics.total)*100;
+if(percent>=80) return "A";
+if(percent>=70) return "B";
+if(percent>=60) return "C";
+if(percent>=50) return "D";
+return "E";
+}
+
+function endGame(){
+document.getElementById("game").style.display="none";
+document.getElementById("results").style.display="block";
+let grade=predictGrade();
+let accuracy=(analytics.correct/analytics.total*100).toFixed(1);
+document.getElementById("results").innerHTML=
+"<h2>Game Over</h2>"+
+"Score: "+score+"<br>"+
+"XP: "+xp+"<br>"+
+"Accuracy: "+accuracy+"%<br>"+
+"Predicted Grade: "+grade+"<br>"+
+"<button onclick='location.reload()'>Restart</button>";
+}
+
+function startBossBattle(){
+currentMode="AS";
+currentTopic="Biological";
+questions=questionBank.filter(q=>q.type==="essay");
+document.getElementById("menu").style.display="none";
+document.getElementById("game").style.display="block";
+updateLives();
+loadQuestion();
+}
+
+</script>
+</body>
+</html>
