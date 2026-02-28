@@ -1,5 +1,5 @@
-<!DOCTYPE html>
 
+<!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8">
@@ -69,7 +69,6 @@ textarea {
 }
 
 </style>
-
 </head>
 <body>
 
@@ -99,26 +98,15 @@ Time: <span id="timer">0</span>s
 
 <script>
 
-// AudioContext created lazily on first user interaction to avoid browser blocking
-let audioCtx = null;
-
-function getAudioCtx(){
-    if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    return audioCtx;
-}
+let audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
 function playTone(freq){
-    try {
-        let ctx = getAudioCtx();
-        let osc = ctx.createOscillator();
-        osc.type="sine";
-        osc.frequency.value=freq;
-        osc.connect(ctx.destination);
-        osc.start();
-        setTimeout(()=>osc.stop(),200);
-    } catch(e) {
-        // Silently fail if audio is unavailable
-    }
+    let osc = audioCtx.createOscillator();
+    osc.type="sine";
+    osc.frequency.value=freq;
+    osc.connect(audioCtx.destination);
+    osc.start();
+    setTimeout(()=>osc.stop(),200);
 }
 
 function soundCorrect(){playTone(600);}
@@ -159,15 +147,10 @@ function loadTopics(){
 
 function startGame(topic){
     currentTopic = topic;
-    lives = 3;
-    xp = 0;
-    score = 0;
-    currentQuestionIndex = 0;
     questions = questionBank.filter(q=>q.topic===topic);
     document.getElementById("menu").style.display="none";
     document.getElementById("game").style.display="block";
     document.getElementById("topicTitle").innerText=topic;
-    document.getElementById("xp").innerText=xp;
     updateLives();
     loadQuestion();
 }
@@ -205,15 +188,14 @@ function checkAnswer(correct,marks){
     if(correct){
         score+=marks;
         xp+=marks*10;
-        document.getElementById("xp").innerText=xp;
         soundCorrect();
     }
     else{
         lives--;
         soundWrong();
-        updateLives();
         if(lives<=0){endGame();return;}
     }
+    updateLives();
     currentQuestionIndex++;
     loadQuestion();
 }
@@ -228,7 +210,6 @@ function submitEssay(){
 }
 
 function startTimer(seconds){
-    clearInterval(timerInterval);
     let time=seconds;
     document.getElementById("timer").innerText=time;
     timerInterval=setInterval(()=>{
@@ -248,7 +229,6 @@ function startTimer(seconds){
 }
 
 function endGame(){
-    clearInterval(timerInterval);
     document.getElementById("game").style.display="none";
     document.getElementById("results").style.display="block";
     document.getElementById("results").innerHTML=
@@ -261,6 +241,5 @@ function endGame(){
 loadTopics();
 
 </script>
-
 </body>
 </html>
